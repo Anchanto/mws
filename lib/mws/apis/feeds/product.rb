@@ -6,30 +6,50 @@ module Mws::Apis::Feeds
 
     attr_reader :sku, :description
 
-    attr_accessor :upc, :tax_code, :msrp, :brand, :manufacturer, :name, :description, :bullet_points
-    attr_accessor :item_dimensions, :package_dimensions, :package_weight, :shipping_weight
-    attr_accessor :category, :details
+    attr_accessor :upc, :upc_type, :tax_code, :msrp, :brand, :manufacturer,
+                  :name, :description, :bullet_points, :item_type, :launch_date,
+                  :item_dimensions, :package_dimensions, :package_weight,
+                  :shipping_weight, :category, :details, :condition_type,
+                  :mfr_part_number, :search_terms, :used_fors,
+                  :other_item_attributes, :target_audiences,
+                  :recommended_browse_nodes, :variation_data,
+                  :release_date, :classification_data
 
     def initialize(sku, &block)
       @sku = sku
       @bullet_points = []
+      @search_terms = []
+      @used_fors = []
+      @other_item_attributes = []
+      @target_audiences = []
+      @recommended_browse_nodes = []
       ProductBuilder.new(self).instance_eval &block if block_given?
-      raise Mws::Errors::ValidationError, 'Product must have a category when details are specified.' if @details and @category.nil?
+
+      if @details and @category.nil?
+        raise Mws::Errors::ValidationError, 'Product must have a category when details are specified.'
+      end
     end
 
     def to_xml(name='Product', parent=nil)
       Mws::Serializer.tree name, parent do |xml|
         xml.SKU @sku
         xml.StandardProductID {
-          xml.Type 'UPC'
+          xml.Type @upc_type
           xml.Value @upc
         } unless @upc.nil?
+
         xml.ProductTaxCode @tax_code unless @upc.nil?
+        xml.LaunchDate @launch_date unless @launch_date.nil?
+        xml.ReleaseDate @release_date unless @release_date.nil?
+        xml.Condition {
+          xml.ConditionType @condition_type
+        } unless @condition_type.nil?
+
         xml.DescriptionData {
           xml.Title @name unless @name.nil?
           xml.Brand @brand  unless @brand.nil?
           xml.Description @description  unless @description.nil?
-          bullet_points.each do | bullet_point |
+          bullet_points.each do |bullet_point|
             xml.BulletPoint bullet_point
           end
           @item_dimensions.to_xml('ItemDimensions', xml) unless @item_dimensions.nil?
@@ -41,13 +61,36 @@ module Mws::Apis::Feeds
           @msrp.to_xml 'MSRP', xml unless @msrp.nil?
 
           xml.Manufacturer @manufacturer unless @manufacturer.nil?
+          xml.MfrPartNumber @mfr_part_number unless mfr_part_number.nil?
+          search_terms.each do |search_term|
+            xml.SearchTerms search_term
+          end
+          used_fors.each do |used_for|
+            xml.UsedFor used_for
+          end
+          xml.ItemType @item_type unless @item_type.nil?
+
+          other_item_attributes.each do |other_item_attribute|
+            xm.OtherItemAttributes other_item_attribute
+          end
+
+          target_audiences.each do |target_audience|
+            xm.TargetAudience target_audience
+          end
+
+          recommended_browse_nodes.each do |recommended_browse_node|
+            xm.RecommendedBrowseNode recommended_browse_node
+          end
         }
 
-        unless @details.nil?
-          xml.ProductData {
-            CategorySerializer.xml_for @category, {product_type: @details}, xml
-          }
-        end
+        details = {}
+        details[:product_type] = @details if @details.present?
+        details[:variation_data] = @variation_data if @variation_data.present?
+        details[:classification_data] = @classification_data if @classification_data.present?
+
+        xml.ProductData {
+          CategorySerializer.xml_for @category, details, xml
+        } unless details.blank?
       end
     end
 
@@ -95,11 +138,35 @@ module Mws::Apis::Feeds
         @product.bullet_points << bullet_point
       end
 
-      def details(details=nil, &block)
+      def search_term(search_term)
+        @product.search_terms << search_term
+      end
+
+      def used_for(used_for)
+        @product.used_fors << used_for
+      end
+
+      def other_item_attribute(other_item_attribute)
+        @product.other_item_attributes << other_item_attribute
+      end
+
+      def target_audience(target_audience)
+        @product.target_audiences << target_audience
+      end
+
+      def recommended_browse_node(recommended_browse_node)
+        @product.recommended_browse_nodes << recommended_browse_node
+      end
+
+      def details(details = nil, &block)
         @product.details = details || {}
         DetailBuilder.new(@product.details).instance_eval &block if block_given?
       end
 
+      def variation_data(variation_data = nil, &block)
+        @product.variation_data = variation_data || {}
+        VariationBuilder.new(@product.variation_data).instance_eval &block if block_given?
+      end
     end
 
     class Dimensions
@@ -156,7 +223,7 @@ module Mws::Apis::Feeds
 
       def as_money(amount, currency=nil)
         Money.new amount, currency
-      end            
+      end
 
       def method_missing(method, *args, &block)
         if block_given?
@@ -166,8 +233,64 @@ module Mws::Apis::Feeds
           @details[method] = args[0]
         end
       end
-
     end
 
+    class VariationBuilder
+      def initialize(variation_data)
+        @variation_data = variation_data
+      end
+
+      def variation_theme(value)
+        @variation_data[:variation_theme] = value
+      end
+
+      def parentage(value)
+        @variation_data[:parentage] = value
+      end
+
+      def size(value)
+        @variation_data[:size] = value
+      end
+
+      def color(value)
+        @variation_data[:color] = value
+      end
+
+      def method_missing(method, *args, &block)
+        if block_given?
+          @details[method] = {}
+          DetailBuilder.new(@details[method]).instance_eval(&block)
+        elsif args.length > 0
+          @details[method] = args[0]
+        end
+      end
+    end
+
+    class ClassificationBuilder
+      def initialize(variation_data)
+        @classificaiton_data = classificaiton_data
+      end
+
+      def clothing_type(value)
+        @classificaiton_data[:clothing_type] = value
+      end
+
+      def department(value)
+        @classificaiton_data[:department] = value
+      end
+
+      def model_number(value)
+        @classificaiton_data[:model_number] = value
+      end
+
+      def method_missing(method, *args, &block)
+        if block_given?
+          @details[method] = {}
+          DetailBuilder.new(@details[method]).instance_eval(&block)
+        elsif args.length > 0
+          @details[method] = args[0]
+        end
+      end
+    end
   end
 end

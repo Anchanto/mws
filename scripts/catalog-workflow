@@ -13,8 +13,8 @@ Logging.logger.root.appenders = Logging.appenders.stdout
 Logging.logger.root.level = :debug
 
 mws = Mws.connect(
-  merchant: ARGV[0], 
-  access: ARGV[1], 
+  merchant: ARGV[0],
+  access: ARGV[1],
   secret: ARGV[2]
 )
 
@@ -24,7 +24,7 @@ class Workflow
     @queue = queue
     @handlers = []
   end
-  
+
   def register(*deps, &handler)
     @handlers << [ handler, deps ]
   end
@@ -65,7 +65,7 @@ workflow.register do
       bullet_point 'Compatible with HDMI components'
       bullet_point'Connects an HDMI source to an HDTV or projector with an HDMI input'
       bullet_point 'Up to 15 Gbps bandwidth'
-      bullet_point'In-wall rated' 
+      bullet_point'In-wall rated'
       msrp 49.99, :usd
       category :ce
       details {
@@ -88,7 +88,7 @@ workflow.register do
         restricted :alaska_hawaii, :standard, :po_box
         adjust 4.99, :usd, :continental_us, :standard
         replace 11.99, :usd, :continental_us, :expedited, :street
-      } 
+      }
     )
     workflow.register price_feed.id, image_feed.id, shipping_feed.id do
       inventory_feed = mws.feeds.inventory.add(

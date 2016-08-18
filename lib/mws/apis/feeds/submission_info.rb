@@ -13,15 +13,16 @@ module Mws::Apis::Feeds
       cancelled: '_CANCELLED_'
     )
 
-    attr_accessor :id, :submitted, :started, :completed
+    attr_accessor :id, :submitted, :started, :completed, :body
 
     Mws::Enum.sym_reader self, :type, :status
 
-    def initialize(node)
+    def initialize(node, body = '')
       @id = node.xpath('FeedSubmissionId').first.text.to_s
       @type = Feed::Type.for(node.xpath('FeedType').first.text)
       @status = Status.for(node.xpath('FeedProcessingStatus').first.text)
       @submitted = Time.parse(node.xpath('SubmittedDate').first.text.to_s)
+      @body = body
       node.xpath('StartedProcessingDate').each do | node |
         @started = Time.parse(node.text.to_s)  
       end
@@ -30,8 +31,8 @@ module Mws::Apis::Feeds
       end
     end
 
-    def self.from_xml(node)
-      new node
+    def self.from_xml(node, body = '')
+      new(node, body)
     end 
 
     def ==(other)

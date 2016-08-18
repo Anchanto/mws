@@ -2,7 +2,7 @@ module Mws::Apis::Feeds
 	
 	class Transaction
 
-    attr_reader :id, :type, :status, :submitted, :items
+    attr_reader :id, :type, :status, :submitted, :items, :body
 
     def initialize(submission_info, items=[], &item_builder)
       @id = submission_info.id
@@ -10,6 +10,7 @@ module Mws::Apis::Feeds
       @status = submission_info.status
       @submitted = submission_info.submitted
       @items = items
+      @body = submission_info.body
       instance_eval &item_builder unless item_builder.nil?
     end
 
