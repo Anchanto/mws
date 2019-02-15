@@ -19,6 +19,7 @@ module Mws
       @access = overrides[:access]
       raise Mws::Errors::ValidationError, 'An access key must be specified.' if @access.nil?
       @secret = overrides[:secret]
+      @auth_token = overrides[:auth_token]
       raise Mws::Errors::ValidationError, 'A secret key must be specified.' if @secret.nil?
       @orders = Apis::Orders.new self
       @feeds = Apis::Feeds::Api.new self
@@ -40,6 +41,7 @@ module Mws
         version: overrides[:version],
         merchant: @merchant,
         access: @access,
+        m_w_s_auth_token: @auth_token,
         list_pattern: overrides.delete(:list_pattern)
       }.merge(params))
       signer = Signer.new method: method, host: @host, path: path, secret: @secret
